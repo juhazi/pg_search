@@ -21,7 +21,7 @@ describe "an Active Record model which includes PgSearch" do
 
     model do
       include PgSearch
-      has_many :models_with_pg_search
+      has_many :model_with_pg_searchs
       scope :active, -> { where(active: true) }
     end
   end
@@ -658,6 +658,27 @@ describe "an Active Record model which includes PgSearch" do
             result = ModelWithPgSearch.search_content("Let").with_pg_search_highlight.first
 
             expect(result.pg_search_highlight).to eq("<mark>Let</mark> text<delim><mark>Let</mark> text")
+          end
+        end
+
+        context "with associated models" do
+          before do
+            ["Strip Down", "Down", "Down and Out", "Won't Let You Down"].each do |name|
+              ModelWithPgSearch.create! :content => name
+            end
+
+            parent = ParentModel.create! :model_with_pg_searchs => ModelWithPgSearch.all
+
+            ParentModel.pg_search_scope :search_models_for_content,
+              :associated_against => {
+                :model_with_pg_searchs => :content
+              }
+          end
+
+          it "returns excerpts of text where search match occurred" do
+            result = ParentModel.search_models_for_content("Let").with_pg_search_highlight.first
+
+            expect(result.pg_search_highlight).to eq("Won't <b>Let</b> You Down")
           end
         end
       end
